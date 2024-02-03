@@ -1,2 +1,2 @@
 # coding-challenges
-quick hackathon style projects
+Quick hackathon style projects, with restrictions or time limits
