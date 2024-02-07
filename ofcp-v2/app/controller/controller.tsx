@@ -41,7 +41,7 @@ export default class Controller {
         // Fisher-Yates shuffle
         // https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle
         for (let i = 0; i < len; i++) {
-            const j = i+Math.floor(Math.random() * len-i-1);
+            const j = i+Math.floor(Math.random() * (len-i-1));
             const temp = this.deck[i];
             this.deck[i] = this.deck[j];
             this.deck[j] = temp;
@@ -74,6 +74,8 @@ export default class Controller {
             //royalties
             const royalties = calculateRoyalties([frontClass,frontStrength],[middleClass,middleStrength],[backClass,backStrength]);
 
+            console.log(frontClass, frontStrength, middleClass, middleStrength, backClass, backStrength, royalties);
+
             prev.push({
                 player,
                 front: [frontClass,frontStrength],
@@ -88,34 +90,54 @@ export default class Controller {
 
         //now, map over it and do comparison
         playersReduced.forEach(({player, front, middle, back, royalties, isBust, isFantasy}) => {
-            playersReduced.forEach(({front: otherFront, middle: otherMiddle, back: otherBack, royalties: otherRoyalties, isBust: otherBust}) => {
+            playersReduced.forEach(({player: otherPlayer, front: otherFront, middle: otherMiddle, back: otherBack, royalties: otherRoyalties, isBust: otherBust}) => {
+                //skip if it's the same player!
+                if (player === otherPlayer) {
+                    return;
+                }
+
                 if (isBust && !otherBust) {
                     player.score -= 6;
+                    player.score -= otherRoyalties;
                 } else if (!isBust) {
                     if (otherBust) {
                         player.score += 6;
+                        console.log("BUST SCOOPED HIM")
                     } else {
+                        let tempScore = 0;
+
                         if (front[0] > otherFront[0] || (front[0] === otherFront[0] && front[1] > otherFront[1])) {
-                            player.score += 1;
+                            tempScore += 1;
                         } else { 
-                            player.score -= 1;
+                            tempScore -= 1;
                         }
 
                         if (middle[0] > otherMiddle[0] || (middle[0] === otherMiddle[0] && middle[1] > otherMiddle[1])) {
-                            player.score += 1;
+                            tempScore += 1;
                         } else {
-                            player.score -= 1;
+                            tempScore -= 1;
                         }
 
                         if (back[0] > otherBack[0] || (back[0] === otherBack[0] && back[1] > otherBack[1])) {
-                            player.score += 1;
+                            tempScore += 1;
                         } else {
-                            player.score -= 1;
+                            tempScore -= 1;
+                        }
+
+                        //scoop detection
+                        if (tempScore == 3) {
+                            //we scooped
+                            player.score += 6;
+                        } else if (tempScore == -3) {
+                            //we got scooped
+                            player.score -= 6;
+                        } else {
+                            player.score += tempScore;
                         }
                     }
 
                     //add royalties
-                    player.score += royalties - otherRoyalties;
+                    player.score += royalties - (!otherBust ? otherRoyalties : 0);
                 }
             });
         });

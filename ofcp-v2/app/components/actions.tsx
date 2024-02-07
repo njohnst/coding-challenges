@@ -13,7 +13,7 @@ export default function Actions ({ player } : { player: number }) {
 
     //if we are in the draw three state, we must discard a card; otherwise no discard
     const discard = controller.state == GameState.DRAW_THREE;
-console.log(controller.state, controller.current, player, controller.current == player);
+
     //if it's our turn, show the controls
     if (controller.current == player) {
         //if we haven't drawn yet:

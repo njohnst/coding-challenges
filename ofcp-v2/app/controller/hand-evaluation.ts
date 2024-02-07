@@ -35,41 +35,49 @@ export function isBust([frontClass,frontStrength]: [HandClass, number], [middleC
 
 export function evaluate3CardHand(hand: string[]): [HandClass, number] {
     //sort in descending order of rank
-    const parsedHand = hand.map(card => card.slice(0)).toSorted((r1, r2) => rankOrder.indexOf(r2) - rankOrder.indexOf(r1));
+    const parsedHand = hand.map(card => card.slice(0,1)).toSorted((r1, r2) => rankOrder.indexOf(r2) - rankOrder.indexOf(r1));
 
     if (parsedHand[0] == parsedHand[1] && parsedHand[1] == parsedHand[2]) {
-        return [HandClass.THREE_OF_A_KIND, rankOrder.indexOf(parsedHand[0])];
+        return [HandClass.THREE_OF_A_KIND, rankOrder.indexOf(parsedHand[0])*16**2];
     } else if (parsedHand[0] == parsedHand[1]) {
-        return [HandClass.ONE_PAIR, rankOrder.indexOf(parsedHand[0]) * 16 + rankOrder.indexOf(parsedHand[2])];
+        return [HandClass.ONE_PAIR, rankOrder.indexOf(parsedHand[0]) * 16**3 + rankOrder.indexOf(parsedHand[2]) * 16**2];
     } else if (parsedHand[1] == parsedHand[2]) {
-        return [HandClass.ONE_PAIR, rankOrder.indexOf(parsedHand[1]) * 16 + rankOrder.indexOf(parsedHand[0])];
+        return [HandClass.ONE_PAIR, rankOrder.indexOf(parsedHand[1]) * 16**3 + rankOrder.indexOf(parsedHand[0]) * 16**2];
     } else {
-        return [HandClass.HIGH_CARD, rankOrder.indexOf(parsedHand[0])*16**2 + rankOrder.indexOf(parsedHand[1])*16 + rankOrder.indexOf(parsedHand[2])];
+        return [HandClass.HIGH_CARD, rankOrder.indexOf(parsedHand[0])*16**4 + rankOrder.indexOf(parsedHand[1])*16**3 + rankOrder.indexOf(parsedHand[2]) * 16 ** 2];
     }
 };
 
 export function evaluate5CardHand(hand: string[]): [HandClass,number] {
     //sort the hand to make straight & straight flush detection easier
-    const parsedHand = hand.map(card => [card.slice(0), card.slice(1)]).toSorted(sortCards); //[rank, suit]
+    const parsedHand = hand.map(card => [card.slice(0,1), card.slice(1)]).toSorted(sortCards); //[rank, suit]
 
     //flush, royal, and straight flush detection
     if (parsedHand.filter(([_,suit]) => suit == parsedHand[0][1]).length == 5) {
         //check for royal
-        if (parsedHand.filter(([rank,_]) => "AKQJT".includes(rank)).length == 5) {
+        if (parsedHand.filter(([rank,_]) => "TJQKA".includes(rank)).length == 5) {
             return [HandClass.ROYAL_FLUSH,0];
         } 
         //check for straight flush
         else if (rankOrder.includes(parsedHand.map(([rank, _]) => rank).join(""))) {
             return [HandClass.STRAIGHT_FLUSH,rankOrder.indexOf(parsedHand[4][0])];
         }
+        //check for wheel straight flush (SPECIAL CASE)
+        else if ("2345A" === parsedHand.map(([rank, _]) => rank).join("")){
+            return [HandClass.STRAIGHT_FLUSH,rankOrder.indexOf('5')];
+        }
         //otherwise, it's a flush
         else {
-            return [HandClass.FLUSH,rankOrder.indexOf(parsedHand[4][0])*16**5 + rankOrder.indexOf(parsedHand[3][0])*16**4 + rankOrder.indexOf(parsedHand[2][0])*16**3 + rankOrder.indexOf(parsedHand[1][0])*16**2 + rankOrder.indexOf(parsedHand[0][0])];
+            return [HandClass.FLUSH,rankOrder.indexOf(parsedHand[4][0])*16**4 + rankOrder.indexOf(parsedHand[3][0])*16**3 + rankOrder.indexOf(parsedHand[2][0])*16**2 + rankOrder.indexOf(parsedHand[1][0])*16 + rankOrder.indexOf(parsedHand[0][0])];
         }
     }
     //straight detection
     else if (rankOrder.includes(parsedHand.map(([rank, _]) => rank).join(""))) {
         return [HandClass.STRAIGHT, rankOrder.indexOf(parsedHand[4][0])];
+    }
+    //check for wheel straight (SPECIAL CASE)
+    else if ("2345A" === parsedHand.map(([rank, _]) => rank).join("")){
+        return [HandClass.STRAIGHT,rankOrder.indexOf('5')];
     }
     //quads, boat, trips, two pair, pair detection
     else {
@@ -100,7 +108,8 @@ export function evaluate5CardHand(hand: string[]): [HandClass,number] {
         } else if (counts.includes(2)) {
             return [
                 HandClass.ONE_PAIR,
-                entries.toSorted(sortRankCounts).reduce((acc, [rank, _]) => acc*16 + rankOrder.indexOf(rank), 0)
+                rankOrder.indexOf(entries.filter(([_, count]) => count == 2)[0][0]) * 16**3
+                + entries.filter(([_, count]) => count == 1).toSorted(sortRankCounts).reduce((acc, [rank, _]) => acc*16 + rankOrder.indexOf(rank), 0)
             ];
         }
     }

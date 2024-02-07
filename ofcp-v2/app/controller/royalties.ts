@@ -34,10 +34,10 @@ export default function calculateRoyalties([frontClass, frontNumber]: [HandClass
     //calc front royalties
     if (frontClass == HandClass.THREE_OF_A_KIND) {
         //10 points for 222, 11 for 333, etc.
-        royalties += frontNumber + 10;
+        royalties += Math.floor(frontNumber/(16**2)) + 10;
     } else if (frontClass == HandClass.ONE_PAIR && frontNumber >= rankOrder.indexOf('6')) {
         //1 point for 66, 2 for 77, etc.
-        royalties += 1 + frontNumber - rankOrder.indexOf('6');
+        royalties += 1 + Math.floor(frontNumber/(16**3)) - rankOrder.indexOf('6');
     }
 
     //calc middle royalties
