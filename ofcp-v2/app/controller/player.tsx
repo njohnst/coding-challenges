@@ -9,6 +9,8 @@ export default class Player {
     draftMiddle: string[] = [];
     draftBack: string[] = [];
 
+    nextHandFantasyCards: number = 0; //14 cards for standard fantasy; 0 implies no fantasy
+
     constructor(name: string) {
         this.name = name;
     }

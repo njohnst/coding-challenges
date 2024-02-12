@@ -284,23 +284,87 @@ describe('Is Bust', () => {
 });
 
 describe('Is Fantasy', () => {
-    it('should return true', () => {
+    it('not in fantasy, should return true', () => {
         const front = [
             'Qh',
             'Qc',
-            '6s',
+            '2s',
         ];
-        const result = isFantasy(evaluate3CardHand(front));
+        const result = isFantasy(evaluate3CardHand(front), [HandClass.ONE_PAIR, 1], false); //use dummy back hand
         expect(result).toBe(true);
     });
 
-    it('should return false', () => {
+    it('not in fantasy, should return false', () => {
+        const front = [
+            'Jh',
+            'Jc',
+            'As',
+        ];
+        const result = isFantasy(evaluate3CardHand(front), [HandClass.ONE_PAIR, 1], false); //use dummy back hand
+        expect(result).toBe(false);
+    });
+
+    it('not in fantasy, should return false', () => {
         const front = [
             'Ah',
             '7c',
             '6s',
         ];
-        const result = isFantasy(evaluate3CardHand(front));
+        const result = isFantasy(evaluate3CardHand(front), [HandClass.ONE_PAIR, 1], false); //use dummy back hand
         expect(result).toBe(false);
+    });
+
+    it('not in fantasy, should return false', () => {
+        const front = [
+            'Ah',
+            '7c',
+            '6s',
+        ];
+        const back = [
+            'Kc',
+            'Ks',
+            'Kd',
+            'Kh',
+            '2s',
+        ];
+        const result = isFantasy(evaluate3CardHand(front), evaluate5CardHand(back), false);
+        expect(result).toBe(false);
+    });
+
+    it('already in fantasy, should return false', () => {
+        const front = [
+            'Qh',
+            'Qc',
+            '6s',
+        ];
+        const result = isFantasy(evaluate3CardHand(front), [HandClass.ONE_PAIR, 1], true); //use dummy back hand
+        expect(result).toBe(false);
+    });
+
+    it('already in fantasy, trips front, should return true', () => {
+        const front = [
+            'Ah',
+            'Ac',
+            'As',
+        ];
+        const result = isFantasy(evaluate3CardHand(front), [HandClass.ONE_PAIR, 1], true); //use dummy back hand
+        expect(result).toBe(true);
+    });
+
+    it('already in fantasy, quads back, should return true', () => {
+        const front = [
+            'Ah',
+            '7c',
+            '6s',
+        ];
+        const back = [
+            'Kc',
+            'Ks',
+            'Kd',
+            'Kh',
+            '2s',
+        ];
+        const result = isFantasy(evaluate3CardHand(front), evaluate5CardHand(back), true);
+        expect(result).toBe(true);
     });
 });

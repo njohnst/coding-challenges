@@ -1,6 +1,6 @@
 'use client';
 
-import { HandClass, evaluate3CardHand, evaluate5CardHand, isBust, isFantasy } from "./hand-evaluation";
+import { HandClass, evaluate3CardHand, evaluate5CardHand, isBust, isFantasy, rankOrder } from "./hand-evaluation";
 import Player from "./player";
 import calculateRoyalties from "./royalties";
 
@@ -16,6 +16,7 @@ export enum GameState {
     FIRST_FIVE,
     DRAW_THREE_DRAW,
     DRAW_THREE,
+    FANTASY_DRAW,
     FANTASY,
     SCORING,
 };
@@ -48,6 +49,20 @@ export default class Controller {
         }
     }
 
+    sortCurrentHand(bySuit: boolean = false) {
+        if (bySuit) {
+            //then sort by suit followed by rank
+            this.players[this.current].hand.sort((a,b) => {
+                return (a.charCodeAt(1) * 16 + rankOrder.indexOf(a[0])) - (b.charCodeAt(1) * 16 + rankOrder.indexOf(b[0]))
+            });
+        } else {
+            //otherwise sort by just rank
+            this.players[this.current].hand.sort((a,b) => {
+                return rankOrder.indexOf(a[0]) - rankOrder.indexOf(b[0]);
+            });
+        }
+    }
+
     setCards() {
         this.players[this.current].setFront(this.players[this.current].getFront().concat(this.players[this.current].getDraftFront()));
         this.players[this.current].setMiddle(this.players[this.current].getMiddle().concat(this.players[this.current].getDraftMiddle()));
@@ -74,7 +89,7 @@ export default class Controller {
             //royalties
             const royalties = calculateRoyalties([frontClass,frontStrength],[middleClass,middleStrength],[backClass,backStrength]);
 
-            console.log(frontClass, frontStrength, middleClass, middleStrength, backClass, backStrength, royalties);
+            //console.log(frontClass, frontStrength, middleClass, middleStrength, backClass, backStrength, royalties);
 
             prev.push({
                 player,
@@ -83,7 +98,7 @@ export default class Controller {
                 back: [backClass,backStrength],
                 royalties,
                 isBust: isBust([frontClass,frontStrength], [middleClass,middleStrength], [backClass,backStrength]),
-                isFantasy: isFantasy([frontClass,frontStrength])
+                isFantasy: isFantasy([frontClass,frontStrength],[backClass,backStrength],player.nextHandFantasyCards > 0)
             });
             return prev;
         }, [] as {player: Player, front: [HandClass, number], middle: [HandClass, number], back: [HandClass, number], royalties: number, isBust: boolean, isFantasy: boolean}[]);
@@ -102,7 +117,6 @@ export default class Controller {
                 } else if (!isBust) {
                     if (otherBust) {
                         player.score += 6;
-                        console.log("BUST SCOOPED HIM")
                     } else {
                         let tempScore = 0;
 
@@ -138,6 +152,14 @@ export default class Controller {
 
                     //add royalties
                     player.score += royalties - (!otherBust ? otherRoyalties : 0);
+
+                    //fantasy detection
+                    if (isFantasy && !isBust) {
+                        //we got fantasy for next hand!
+                        player.nextHandFantasyCards = 14;
+                    } else {
+                        player.nextHandFantasyCards = 0;
+                    }
                 }
             });
         });
@@ -167,19 +189,50 @@ export default class Controller {
                     this.dealer = (this.dealer + 1) % this.players.length;
                 }
 
-                //set to the first player's turn
-                this.current = (this.dealer + 1) % this.players.length;
-
                 //check if any players are waiting for fantasy
-                if (0) { //TODO!
-                    this.state = GameState.FANTASY;
+                const playersIndicesAwaitingFantasy = this.players.map((_, idx) => idx).filter((player: number) => this.players[player].nextHandFantasyCards > 0);
+                if (playersIndicesAwaitingFantasy.length > 0) {
+                    this.current = playersIndicesAwaitingFantasy[0];
+                    this.state = GameState.FANTASY_DRAW;
                 } else {
+                    //set to the first player's turn
+                    this.current = (this.dealer + 1) % this.players.length;
                     this.state = GameState.FIRST_FIVE_DRAW;
                 }
                 break;
         
+            case GameState.FANTASY_DRAW:
+                if (this.deck.length < 14) {
+                    throw new Error("Not enough cards in the deck, something went wrong!");
+                }
+
+                //TODO possibly allow more than 14 cards for fantasy for some variants
+                //draw 14 for the player!
+                this.players[this.current].setHand(this.deck.splice(0, 14));
+
+                //go to the the next phase
+                this.state = GameState.FANTASY;
+
+                break;
+
             case GameState.FANTASY:
-                //TODO!
+                this.setCards();
+
+                this.current = (this.current + 1) % this.players.length;
+
+                //go to the the next phase
+                //if next player is waiting for fantasy, then stay in fantasy state
+                if (this.players[this.current].nextHandFantasyCards > 0 && this.players[this.current].front.length < 3) {
+                    this.state = GameState.FANTASY_DRAW;
+                } else if (this.players[this.current].nextHandFantasyCards > 0 && this.players[this.current].front.length == 3) {
+                    //else if the next player already set their fantasy, then we are done, let's go to scoring
+                    this.state = GameState.SCORING;
+                    this.step();
+                } else {
+                    //otherwise, go to next
+                    this.state = GameState.FIRST_FIVE_DRAW;
+                }
+
                 break;
 
             case GameState.FIRST_FIVE_DRAW:
@@ -199,11 +252,32 @@ export default class Controller {
                 this.setCards();
 
                 if (this.current === this.dealer) {
+                    //then let's go to draw three
                     this.state = GameState.DRAW_THREE_DRAW;
+
+                    //advance to the next player
                     this.current = (this.current + 1) % this.players.length;
+
+                    //skip to the next non-fantasy player
+                    while (this.players[this.current].nextHandFantasyCards > 0) {
+                        this.current = (this.current + 1) % this.players.length;
+                    }
                 } else {
+                    //set the state to draw 5
+                    //but we may change it in the loop...
                     this.state = GameState.FIRST_FIVE_DRAW;
+
+                    //advance to the next player
                     this.current = (this.current + 1) % this.players.length;
+
+                    //otherwise, let's check if there are any non-fantasy players remaining
+                    while (this.players[this.current].nextHandFantasyCards > 0) {
+                        //check if we've passed the dealer yet
+                        if (this.current === this.dealer) {
+                            this.state = GameState.DRAW_THREE_DRAW;
+                        }
+                        this.current = (this.current + 1) % this.players.length;
+                    }
                 }
                 break;
 
@@ -223,11 +297,21 @@ export default class Controller {
             case GameState.DRAW_THREE:
                 this.setCards();
 
+                //skip over any players in fantasy...
+                while (this.players[this.current].nextHandFantasyCards > 0) {
+                    this.current = (this.current + 1) % this.players.length;
+                }
+
                 if (this.players.filter(player => player.getFront().length == 3 && player.getMiddle().length == 5 && player.getBack().length == 5).length === this.players.length){
                     this.state = GameState.SCORING;
                     this.step();
                 } else {
                     this.state = GameState.DRAW_THREE_DRAW;
+                    this.current = (this.current + 1) % this.players.length;
+                }
+
+                //again.... skip over any players in fantasy...
+                while (this.players[this.current].nextHandFantasyCards > 0) {
                     this.current = (this.current + 1) % this.players.length;
                 }
                 break;

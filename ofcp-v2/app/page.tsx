@@ -72,13 +72,13 @@ export default function Game() {
                 </Stack>
                 <Grid container spacing={2}>
                   <Grid item xs={3}>
-                    <Board board={player.back} draft={player.draftBack} maxSize={5} disable={controller.current != index}/>
+                    <Board board={player.back} draft={player.draftBack} maxSize={5} player={index} disable={controller.current != index}/>
                   </Grid>
                   <Grid item xs={3}>
-                    <Board board={player.middle} draft={player.draftMiddle} maxSize={5} disable={controller.current != index}/>
+                    <Board board={player.middle} draft={player.draftMiddle} maxSize={5} player={index} disable={controller.current != index}/>
                   </Grid>
                   <Grid item xs={3}>
-                    <Board board={player.front} draft={player.draftFront} maxSize={3} disable={controller.current != index}/>
+                    <Board board={player.front} draft={player.draftFront} maxSize={3} player={index} disable={controller.current != index}/>
                   </Grid>
                 </Grid>
               </Stack>

@@ -5,4 +5,6 @@ HOURS
 4. Feb 6 (1230PM - 455PM) 4h 25m
 --(first commit = 7.5hrs)--
 5. Feb 6 (5PM-730PM) 2.5 hrs
---(second commit = 2.5hrs+7.5hrs = 10hrs total)
+--(second commit = 2.5hrs+7.5hrs = 10hrs total)--
+6. Feb 11 (5PM-830PM, 10PM-11PM) 4.5hrs
+--(third commit = 2.5+7.5+4.5 = 14.5 hrs total)--

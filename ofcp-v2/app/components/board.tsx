@@ -3,19 +3,23 @@ import styles from "./board.module.css";
 import PrettyCard from "./card";
 import { ControllerContext } from "../controller-provider";
 import { useContext, useState } from "react";
+import { GameState } from "../controller/controller";
 
-export default function Board ({ board, draft, maxSize, disable } : { board: string[], draft: string[], maxSize: number, disable: boolean }) {
+export default function Board ({ board, draft, maxSize, player, disable } : { board: string[], draft: string[], maxSize: number, player: number, disable: boolean }) {
     const [controller, rerender] = useContext(ControllerContext);
 
     if (!controller) {
         throw new Error("Controller not found");
     }
 
+    //check if player is in fantasyland and if we need to hide cards (i.e. it's not our turn anymore and we aren't in the scoring screen)
+    const hide = controller.state != GameState.SCORING && controller.state != GameState.START && controller.players[player].nextHandFantasyCards > 0 && controller.current != player;
+
     return <Stack spacing={1} className={styles.board} alignItems='center'>
         {board.map((card, index) => (
             // rendered as a button for consistent styling... it's disabled though
             <Button disabled key={index}>
-                <PrettyCard card={card}/>
+                <PrettyCard card={card} hidden={hide}/>
             </Button>
         ))}
         {draft.map((card, index) => (

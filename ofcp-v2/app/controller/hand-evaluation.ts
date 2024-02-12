@@ -22,8 +22,14 @@ const sortRankCounts = ([rank1, _]: [string, number], [rank2, __]: [string,numbe
     return rankOrder.indexOf(rank2) - rankOrder.indexOf(rank1);
 }
 
-export function isFantasy([handClass,strength]: [HandClass, number]): boolean {
-    return handClass == HandClass.THREE_OF_A_KIND || (handClass == HandClass.ONE_PAIR && strength >= rankOrder.indexOf('Q'));
+export function isFantasy([frontClass, frontStrength]: [HandClass, number], [backClass, backStrength]: [HandClass, number], isFantasyAlready: boolean): boolean {
+    if (isFantasyAlready) {
+        //if already in fantasy, need trips in the front or quads or better in the back to stay in fantasy
+        return backClass >= HandClass.FOUR_OF_A_KIND || frontClass == HandClass.THREE_OF_A_KIND;
+    } else {
+        //if not already in fantasy, just need QQ or better in the front
+        return frontClass == HandClass.THREE_OF_A_KIND || (frontClass == HandClass.ONE_PAIR && Math.floor(frontStrength / (16**3)) >= rankOrder.indexOf('Q'));
+    }
 }
 
 export function isBust([frontClass,frontStrength]: [HandClass, number], [middleClass, middleStrength]: [HandClass, number], [backClass, backStrength]: [HandClass, number]): boolean {
