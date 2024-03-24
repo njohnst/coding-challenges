@@ -69,7 +69,15 @@ export default function Actions ({ gameState, selected, setSelected, currentHand
                             <Grid item>
                                 {/* show an invisible blank card to make sure the bar doesn't resize */}
                                 <Button disabled sx={{visibility: 'hidden'}}><PrettyCard card='-' /></Button>
-                                <Button  sx={{height:'100%'}} disabled={!(discard ? cards.length == 1 : cards.length < 1)} onClick={()=> { socket.emit('set-hand', {draftBack: draftBack, draftMiddle: draftMiddle, draftFront: draftFront,}); }} variant='contained'>Set</Button>
+                                <Button  sx={{height:'100%'}} 
+                                        disabled={!(discard ? cards.length == 1 : cards.length < 1)}
+                                        onClick={()=> { 
+                                            console.log("TRYING TO SET HAND"); 
+                                            socket.emit('set-hand', draftBack, draftMiddle, draftFront);
+                                        }}
+                                        variant='contained'>
+                                            Set
+                                    </Button>
                             </Grid>
                         </Grid>
                     </Paper>

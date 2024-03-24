@@ -1,8 +1,7 @@
 import { Server } from 'socket.io';
-import Controller from './controller/controller';
+import Controller, { GameState } from './controller/controller';
 import Room from './room';
 import Player from './controller/player';
-import { kMaxLength } from 'buffer';
 
 const io = new Server({
   cors: {
@@ -14,7 +13,10 @@ const io = new Server({
 const rooms = {} as {[key: string]: Room};
 
 io.on('connection', (socket) => {
-  io.on('create-game', (_,callback) => {
+  console.log("a user connected")
+  
+  socket.on('create-game', () => {
+    console.log("creating game...");
     const roomId = (() => {
       for (let i = 0; i < 10; i++) {
         const roomId = Math.random().toString(36).substring(7); //generate a random alphanumeric string
@@ -25,37 +27,43 @@ io.on('connection', (socket) => {
       throw new Error('Failed to generate a unique room ID after 10 attempts'); //should basically never get here!
     })();
 
-    //now, let's create the room and subscribe the client to that room
+    //now, let's create the room and tell the client
     rooms[roomId] = new Room(roomId);
-    socket.join(roomId);
-    callback(roomId);
+    socket.emit('create-game', roomId);
+
+    //don't add him yet, let him join the room
   });
 
-  io.on('join-game', (roomId: string, callback) => {
+  socket.on('join-game', (roomId: string) => {
     if (!rooms[roomId]) {
-      callback({success: false, message: 'Room does not exist!'});
+      socket.emit('join-game', {success: false, message: 'Room does not exist!'});
       throw new Error('Room does not exist!');
     }
 
     //unable to join if already started
     if (rooms[roomId].gameStarted) {
-      callback({success: false, message: 'Game has already started!'});
+      socket.emit('join-game', {success: false, message: 'Game has already started!'});
     }
     //unable to join if full (3 players)
     else if (rooms[roomId].clients.length >= 3) {
-      callback({success: false, message: 'Room is full!'});
+      socket.emit('join-game', {success: false, message: 'Room is full!'});
     }
     //otherwise, join the room
     else {
-      rooms[roomId].addClient(socket);
-      socket.join(roomId);
+      console.log("joining game...");
   
-      callback({success: true, message: 'Joined room!'});
+      socket.emit('join-game', {success: true, message: 'Joined room!'});
+
+      //add the player to the room and tell everyone in the room
+      socket.join(roomId);
+      rooms[roomId].addClient(socket);
+      console.log("num players in room currently: " + rooms[roomId].clients.length)
+      io.to(roomId).emit('lobby-clients', rooms[roomId].clients.length);
     }
   });
     
 
-  io.on('start-game', (roomId: string) => {
+  socket.on('start-game', (roomId: string) => {
     if (!rooms[roomId]) {
       throw new Error('Room does not exist!');
     }
@@ -80,9 +88,46 @@ io.on('connection', (socket) => {
     //tell all clients the game state
     const rCtrl = rooms[roomId].controller;
     io.to(roomId).emit('game-state', {  players: rCtrl.players, dealer: rCtrl.dealer, current: rCtrl.current, state: rCtrl.state });
+
+    //set up the game listeners / wiring
+    //TODO minimal validation right now...
+    rooms[roomId].clients.forEach((client) => {    
+      //game actions
+      client.on('draw', () => {
+        //check if this the current player and if they are allowed to draw
+        if (rCtrl.current == Object.keys(rooms[roomId].clientPlayerMap).indexOf(client.id)
+            && (rCtrl.state == GameState.FIRST_FIVE_DRAW || rCtrl.state == GameState.DRAW_THREE_DRAW || rCtrl.state == GameState.FANTASY_DRAW)) {
+          rooms[roomId].controller.step();
+          io.to(roomId).emit('game-state', {  players: rCtrl.players, dealer: rCtrl.dealer, current: rCtrl.current, state: rCtrl.state });
+        }
+      });
+
+      client.on('next-hand', () => {
+        //check if this the current player and if they are allowed to go next hand
+        if (rCtrl.current == Object.keys(rooms[roomId].clientPlayerMap).indexOf(client.id)
+            && rCtrl.state == GameState.START) {
+          rooms[roomId].controller.step();
+          io.to(roomId).emit('game-state', {  players: rCtrl.players, dealer: rCtrl.dealer, current: rCtrl.current, state: rCtrl.state });
+        }
+      });
+
+      client.on('set-hand', (draftBack: string[], draftMiddle: string[], draftFront: string[]) => {
+          //check if this the current player and if they are allowed to set
+          if (rCtrl.current == Object.keys(rooms[roomId].clientPlayerMap).indexOf(client.id)
+             && (rCtrl.state == GameState.FIRST_FIVE || rCtrl.state == GameState.DRAW_THREE || rCtrl.state == GameState.FANTASY)) {
+            //TODO validate the draft...
+            rCtrl.players[rCtrl.current].draftBack = draftBack;
+            rCtrl.players[rCtrl.current].draftMiddle = draftMiddle;
+            rCtrl.players[rCtrl.current].draftFront = draftFront;
+            rCtrl.setCards();
+            rooms[roomId].controller.step();
+            io.to(roomId).emit('game-state', {  players: rCtrl.players, dealer: rCtrl.dealer, current: rCtrl.current, state: rCtrl.state });
+          }
+      });
+    });
   });
 
-  io.on('disconnect', () => {
+  socket.on('disconnect', () => {
     //remove the client from all rooms
     Object.values(rooms).forEach(room => {
       room.removeClient(socket);

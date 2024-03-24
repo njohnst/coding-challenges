@@ -23,6 +23,7 @@ export default function Board ({ gameState, selected, setSelected, currentHand, 
                 onClick={() => {
                     const newDraft = draft.slice();
                     const temp = newDraft.splice(draft.findIndex(c => c == card),1);
+                    setDraft(newDraft);
                     //put the card back into hand...
                     const newHand = currentHand.slice();
                     newHand.push(temp[0]);
@@ -44,7 +45,7 @@ export default function Board ({ gameState, selected, setSelected, currentHand, 
                             setDraft(newDraft);
                             //remove the card from player's hand
                             const newHand = currentHand.slice();
-                            newHand.splice(gameState.players[gameState.current].hand.findIndex(c => c == selected),1);
+                            newHand.splice(currentHand.findIndex(c => c == selected),1);
                             setCurrentHand(newHand);
                             setSelected('');
                         }

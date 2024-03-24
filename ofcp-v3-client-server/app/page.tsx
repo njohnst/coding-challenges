@@ -18,19 +18,16 @@ export default function Home() {
   }
 
   const createGame = () => {
-    socket.emit('createGame', (roomId: string) => {
+    console.log("trying to create")
+    socket.emit('create-game', roomId);
+    socket.once('create-game', (roomId) => {
+      console.log("created successfully, rerouting to game page")
       router.push(`/game/${roomId}`);
     });
   };
 
   const joinGame = (roomId: string) => {
-    socket.emit('join-game', roomId, ({success, message} : {success: boolean, message: string}) => {
-      if (success) {
-        router.push(`/game/${roomId}`);
-      } else {
-        alert(message);
-      }
-    });
+    router.push(`/game/${roomId}`);
   };
   
   //join or create

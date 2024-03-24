@@ -9,7 +9,6 @@ export const SocketContext = createContext(null as Socket | null);
 export default function SocketProvider ({children}: {children: React.ReactNode}) {
     //make the context
     const socket = useRef(io(":3001"));
-    socket.current.connect();
 
     return (
         <SocketContext.Provider value={socket.current}>
